@@ -8,7 +8,8 @@ Usage:
             [--overrides=<json>] \r\n \
             [--minResult=<float>] \r\n \
             [--interval=<integer>]\r\n \
-            [--endMinutesAgo=<integer>]
+            [--endMinutesAgo=<integer>]\r\n \
+            [--jsonOutput]
 
 
 Options:
@@ -20,6 +21,7 @@ Options:
   --endMinutesAgo=<integer>                  How many minutes ago (from now) the sampling interval ends. now=0, 1h ago=60, etc. [default: 0]
   --overrides=<json>                         Values to use in the formula instead of values measures. Useful for apdex on latforms without it. [default: {}]
   --minResult=<float>                        The minimum accepted result value for the mswyw metric. If below minResult, exit with a non-zero code. [default: 0.0]
+  --jsonOutput                               Automation friendly output 
 
 Author:
   Marcio Marchini (marcio@BetterDeveloper.net)
@@ -87,8 +89,7 @@ def sanitize_coefficients(coefs):
 def main():
     script_start_time = datetime.datetime.now()
     arguments = docopt(__doc__, version=VERSION)
-    print("\r\n====== mswyw - see https://github.com/sglebs/mswyw ==========")
-    print(arguments)
+
     try:
         formula_coefficients = json.loads(arguments.get("--coefficients", "{}"))
         sanitize_coefficients(formula_coefficients)
@@ -101,18 +102,29 @@ def main():
         overrides = json.loads(arguments.get("--overrides", "{}"))
         mswyw_score = compute_formula(arguments.get("--calcProvider"), ms_runtime_data, formula_coefficients, overrides)
         script_end_time = datetime.datetime.now()
-        print("\r\n--------------------------------------------------")
-        print("Sampling Start time: %sZ" % sampling_start_time.isoformat())
-        print("Sampling End time:   %sZ" % sampling_end_time.isoformat())
-        print("Instances:")
-        for runtime_data in ms_runtime_data:
-            print(runtime_data)
-        print("\r\n--------------------------------------------------")
-        print("Started : %s" % str(script_start_time))
-        print("Finished: %s" % str(script_end_time))
-        print("Total: %s" % str(script_end_time - script_start_time))
-        print("mswyw score: %s" % str(mswyw_score))
-        print("--------------------------------------------------")
+
+        if arguments.get("--jsonOutput"):
+            information = {"score": mswyw_score, "instance_count": len(ms_runtime_data)}
+
+            information["name"] = provider_params['elastic.APPS'] if arguments.get("--runtimeProvider") == "elastic" else provider_params["nrelic.APPID"]
+
+            print(json.dumps(information))
+        else:
+            print("\r\n====== mswyw - see https://github.com/sglebs/mswyw ==========")
+            print(arguments)
+            print("\r\n--------------------------------------------------")
+            print("Sampling Start time: %sZ" % sampling_start_time.isoformat())
+            print("Sampling End time:   %sZ" % sampling_end_time.isoformat())
+            print("Instances:")
+            for runtime_data in ms_runtime_data:
+                print(runtime_data)
+            print("\r\n--------------------------------------------------")
+            print("Started : %s" % str(script_start_time))
+            print("Finished: %s" % str(script_end_time))
+            print("Total: %s" % str(script_end_time - script_start_time))
+            print("mswyw score: %s" % str(mswyw_score))
+            print("--------------------------------------------------")
+
         min_result = params_as_dict(arguments.get("--minResult", 0.0))
         if mswyw_score < min_result:
             exit(-10)  # any non-zero value, really
