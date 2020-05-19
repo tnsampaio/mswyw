@@ -74,6 +74,13 @@ def compute_formula(plugin_name_as_fqn_python_module, ms_runtime_data, formula_c
         raise ValueError("Cannot resolve %s" % plugin_name_as_fqn_python_module)
     return calc_module.calc_mswyw(ms_runtime_data, formula_coefficients, overrides, DEFAULT_VALUE_FOR_MISSING_MATRIC)
 
+def enrich_information_for_json(plugin_name_as_fqn_python_module, ms_runtime_data, formula_coefficients, overrides):
+    try:
+        calc_module = importlib.import_module(plugin_name_as_fqn_python_module)
+    except ModuleNotFoundError:
+        raise ValueError("Cannot resolve %s" % plugin_name_as_fqn_python_module)
+    return calc_module.enrich_json_information(ms_runtime_data, formula_coefficients, overrides, DEFAULT_VALUE_FOR_MISSING_MATRIC)
+
 
 def sanitize_coefficients(coefs):
     for name in ["total", "apdex", "rpm", "endpoints", "mem", "cpu", "epm"]:
@@ -107,8 +114,8 @@ def main():
             information = {"score": mswyw_score, "instance_count": len(ms_runtime_data)}
 
             information["name"] = provider_params['elastic.APPS'] if arguments.get("--runtimeProvider") == "elastic" else provider_params["nrelic.APPID"]
-
-            print(json.dumps(information))
+            enrich_information = enrich_information_for_json(arguments.get("--calcProvider"), ms_runtime_data, formula_coefficients, overrides)
+            print(json.dumps({**information, **enrich_information}))
         else:
             print("\r\n====== mswyw - see https://github.com/sglebs/mswyw ==========")
             print(arguments)
