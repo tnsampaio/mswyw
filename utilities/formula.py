@@ -17,3 +17,15 @@ def calc_mswyw(ms_runtime_data, formula_coefficients, overrides, default_value_f
         return 0.0
     else:
         return formula_coefficients["total"] * (total_value / total_cost)
+
+def enrich_json_information(ms_runtime_data, formula_coefficients, overrides, default_value_for_missing_metric):
+    values_apdex = []
+    values_epm = []
+    values_rpm = []
+
+    for metrics in ms_runtime_data:
+        values_apdex.append(metrics["apdex"])
+        values_epm.append(metrics["epm"])
+        values_rpm.append(metrics["rpm"])
+    
+    return {'apdex_avg': sum(values_apdex)/len(values_apdex),'epm_avg': sum(values_epm)/len(values_epm),'rpm_avg': sum(values_rpm)/len(values_rpm)}
